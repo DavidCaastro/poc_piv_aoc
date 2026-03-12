@@ -128,7 +128,7 @@ REGISTRAR toda resolución de conflicto técnico en el reporte de coherencia.
 
 ## Autorización de Merge
 
-El CoherenceAgent emite una autorización explícita antes de que cualquier subrama haga merge a la rama de tarea:
+El CoherenceAgent cubre el **GATE 1**: merge de subramas de expertos a la rama de tarea. El merge de rama de tarea a `staging` es responsabilidad del GATE 2 (Security + Audit).
 
 ```
 COHERENCE MERGE AUTHORIZATION
@@ -139,7 +139,8 @@ Estado final: COHERENTE
 AUTORIZADO para merge a feature/<tarea>: SÍ / NO
 ```
 
-Sin esta autorización, el Domain Orchestrator no puede ejecutar el merge.
+Sin esta autorización, el Domain Orchestrator no puede ejecutar el GATE 1.
+El GATE 2 (feature/<tarea> → staging) es independiente y lo gestiona Security + Audit.
 
 ---
 

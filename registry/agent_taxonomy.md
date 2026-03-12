@@ -14,25 +14,30 @@ Nivel 2  →  Specialist Agents (Expertos: N por tarea, paralelos en subramas)
 
 ---
 
-## Estructura de Ramas por Tarea
+## Estructura de Ramas
 
 ```
-main
-└── feature/<tarea>                        ← creada por Domain Orchestrator
-    ├── feature/<tarea>/<experto-1>        ← creada por Domain Orchestrator
-    ├── feature/<tarea>/<experto-2>        ← creada por Domain Orchestrator (si aplica)
-    └── feature/<tarea>/<experto-N>        ← tantas como expertos asigne el orquestador
+main                                       ← producción (solo recibe desde staging, con confirmación humana)
+└── staging                                ← pre-producción (creada por Master Orchestrator al inicio)
+    └── feature/<tarea>                    ← creada por Domain Orchestrator desde staging
+        ├── feature/<tarea>/<experto-1>    ← creada por Domain Orchestrator
+        ├── feature/<tarea>/<experto-2>    ← creada por Domain Orchestrator (si aplica)
+        └── feature/<tarea>/<experto-N>    ← tantas como expertos asigne el orquestador
 
-Worktrees:
-./worktrees/<tarea>/
+Worktrees (solo para subramas de expertos):
 ./worktrees/<tarea>/<experto-1>/
 ./worktrees/<tarea>/<experto-2>/
 ```
 
-**Flujo de merge:**
+**Flujo de merge (tres gates):**
 ```
-feature/<tarea>/<experto-N>  →(Coherence aprueba)→  feature/<tarea>
-feature/<tarea>              →(Security+Audit aprueban)→  main
+feature/<tarea>/<experto-N>
+        → GATE 1: Coherence aprueba →
+feature/<tarea>
+        → GATE 2: Security + Audit aprueban →
+staging
+        → GATE 3: Security + Audit (integral) + confirmación humana →
+main
 ```
 
 ---

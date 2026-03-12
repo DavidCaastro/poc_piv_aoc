@@ -83,12 +83,20 @@ FASE 5: EJECUCIÓN PARALELA DE EXPERTOS
   └── Tareas SECUENCIALES esperan a que sus dependencias completen y pasen gate
 
 FASE 6: MERGE EN DOS NIVELES — ejecutado por Domain Orchestrator
-  ├── CoherenceAgent autoriza → Domain Orchestrator ejecuta merge
+  ├── [GATE 1] CoherenceAgent autoriza → Domain Orchestrator ejecuta merge
   │     feature/<tarea>/<experto> → feature/<tarea>
-  └── Security + Audit aprueban → Domain Orchestrator ejecuta merge
-        feature/<tarea> → main
+  └── [GATE 2] Security + Audit aprueban → Domain Orchestrator ejecuta merge
+        feature/<tarea> → staging
 
-FASE 7: CIERRE
+FASE 7: GATE FINAL DE PRE-PRODUCCIÓN — coordinado por Master Orchestrator
+  ├── Cuando TODAS las tareas del objetivo están en staging:
+  │     Security + Audit hacen revisión integral de staging
+  │     Master Orchestrator presenta estado completo al usuario
+  ├── [GATE 3 — HUMANO + GATE] Solo con confirmación humana explícita:
+  │     Master Orchestrator ejecuta merge staging → main
+  └── Sin confirmación humana: staging permanece, nunca se toca main
+
+FASE 8: CIERRE
   ├── AuditAgent genera 3 logs en /logs_veracidad/
   └── AuditAgent + CoherenceAgent actualizan engram/session_learning.md
 ```

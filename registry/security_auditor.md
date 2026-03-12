@@ -30,7 +30,7 @@ VEREDICTO: APROBADO | RECHAZADO
 RAZÓN (si rechazado): <explicación específica>
 ```
 
-### Gate 2: Revisión post-implementación (pre-merge, bloqueante)
+### Gate 2b: Revisión post-implementación (feature/<tarea> → staging, bloqueante)
 ```
 CHECKLIST GATE 2 — CÓDIGO:
 [ ] Grep: password=, secret=, api_key=, token= sin valores literales
@@ -157,30 +157,89 @@ Esto permite reconstruir el historial de rechazos para aplicar correctamente la 
 
 # GATE COMBINADO — Flujo de Aprobación
 
+El Security + Audit actúan en **dos momentos distintos**:
+
+## Gate 2: Plan → Worktrees (pre-código, por tarea)
+
 ```
 Plan listo del Domain Orchestrator
            │
      ┌─────┴─────┐
      ▼           ▼
  Security      Audit
-  Agent        Agent
- evalúa        evalúa
+  Gate 2       Gate 2
  (paralelo)   (paralelo)
      │           │
      └─────┬─────┘
            │
-    ┌──────┴───────┐
-    │              │
- AMBOS        CUALQUIERA
- APRUEBAN      RECHAZA
-    │              │
-    ▼              ▼
- Autorizar    Plan devuelto
- ejecución    al Domain Orchestrator
-              → revisar → repetir gate
+    ¿Ambos aprueban?
+           │
+    NO─────┴─────SÍ
+    │             │
+    ▼             ▼
+Plan devuelto  Autorizar
+al DO          worktrees + expertos
 ```
 
-Ambos gates corren en paralelo. Ambos deben aprobar. Un rechazo de cualquiera bloquea la ejecución independientemente del veredicto del otro.
+## Gate 2b: feature/<tarea> → staging (post-implementación, por tarea)
+
+Cuando todos los expertos de una tarea han completado y CoherenceAgent autorizó (Gate 1):
+
+```
+feature/<tarea> listo para staging
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+ Security      Audit
+  Gate 2b      Gate 2b
+ (código real) (trazabilidad RF)
+     │           │
+     └─────┬─────┘
+           │
+    ¿Ambos aprueban?
+           │
+    NO─────┴─────SÍ
+    │             │
+    ▼             ▼
+Revisión        Merge
+requerida       feature/<tarea> → staging
+```
+
+## Gate 3: staging → main (gate final, todo el objetivo)
+
+Cuando TODAS las tareas del objetivo están en staging:
+
+```
+staging completo (todas las tareas)
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+ Security      Audit
+  Gate 3       Gate 3
+ (revisión     (logs de
+  integral)    veracidad)
+     │           │
+     └─────┬─────┘
+           │
+    ¿Ambos aprueban?
+           │
+    NO─────┴─────SÍ
+    │             │
+    ▼             ▼
+Bloqueo      Presentar al
+staging      usuario para
+             confirmación
+                  │
+             ¿Usuario confirma?
+                  │
+             NO───┴───SÍ
+             │         │
+             ▼         ▼
+          staging   merge
+          permanece staging → main
+```
+
+Ambos gates corren en paralelo en cada momento. Ambos deben aprobar. El Gate 3 requiere además confirmación humana explícita: ningún agente hace el merge a `main` de forma autónoma.
 
 ---
 

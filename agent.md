@@ -59,16 +59,17 @@ El grafo se presenta al usuario para confirmación antes de crear entorno de con
 
 ---
 
-## 4. Estructura de Ramas de Trabajo (Dos Niveles)
-
-Cada tarea tiene su rama. Cada experto asignado a esa tarea tiene su subrama:
+## 4. Estructura de Ramas de Trabajo (Tres Niveles)
 
 ```
-main
-└── feature/<tarea>                        ← rama de tarea (creada primero)
-    ├── feature/<tarea>/<experto-1>        ← subrama experto 1 (paralela)
-    └── feature/<tarea>/<experto-2>        ← subrama experto 2 (paralela)
+main          ← producción. Solo recibe merges desde staging con aprobación humana explícita.
+└── staging   ← pre-producción. Integración de todas las tareas del objetivo. Gate final.
+    └── feature/<tarea>                        ← rama de tarea (creada primero)
+        ├── feature/<tarea>/<experto-1>        ← subrama experto 1 (paralela)
+        └── feature/<tarea>/<experto-2>        ← subrama experto 2 (paralela)
 ```
+
+`staging` es una rama **persistente** creada por el Master Orchestrator al inicio del objetivo. No se destruye hasta que el objetivo completo esté en `main`.
 
 **Worktrees correspondientes:**
 ```
@@ -77,16 +78,21 @@ main
 ./worktrees/<tarea>/<experto-2>/           ← worktree del experto 2
 ```
 
-**Flujo de merge:**
+**Flujo de merge (tres pasos, cada uno con su gate):**
 ```
 feature/<tarea>/<experto-N>
-        │  merge tras aprobación del Coherence Agent
+        │  GATE 1: CoherenceAgent autoriza
         ▼
 feature/<tarea>
-        │  merge tras aprobación de Security + Audit
+        │  GATE 2: Security + Audit aprueban
+        ▼
+      staging       ← integración de todas las tareas del objetivo
+        │  GATE 3: revisión humana + Security + Audit (gate final)
         ▼
        main
 ```
+
+**Regla de staging → main:** Ningún agente ejecuta este merge de forma autónoma. El Master Orchestrator presenta el estado final al usuario, y solo tras confirmación humana explícita se hace el merge a `main`.
 
 ---
 

@@ -74,8 +74,13 @@ El Master determina qué superagentes son necesarios según el objetivo:
 ```
 1. Presentar grafo de dependencias al usuario → esperar confirmación
 2. Tras confirmación: crear entorno de control completo (superagentes)
-3. Crear Domain Orchestrators (uno por dominio identificado en el grafo)
-4. Domain Orchestrators crean ramas, worktrees y expertos siguiendo el grafo
+3. Crear rama staging (si no existe): git checkout -b staging main
+4. Crear Domain Orchestrators (uno por dominio identificado en el grafo)
+5. Domain Orchestrators crean ramas de tarea desde staging, worktrees y expertos
+
+Jerarquía de ramas:
+  main ← staging ← feature/<tarea> ← feature/<tarea>/<experto>
+  Las ramas de tarea se crean a partir de staging, no de main.
 ```
 
 ### Paso 5: Gestión del grafo durante la ejecución
@@ -110,29 +115,47 @@ Cuando una tarea SECUENCIAL queda desbloqueada (su dependencia completa y pasa e
 | Agente no responde después de 3 intentos de coordinación | Escalar al orquestador padre. Si el orquestador padre tampoco recibe respuesta → notificar usuario. |
 | Agente solicita escalado de modelo | Evaluar y reasignar o escalar a revisión humana |
 | Tarea desbloqueada por completarse su dependencia | Activar Domain Orchestrator correspondiente |
+| Todas las tareas del objetivo completadas en staging | Presentar informe de estado completo al usuario → solicitar confirmación para merge a main |
+| Usuario confirma merge staging → main | Master Orchestrator ejecuta merge. Único merge autónomo a main permitido. |
+| Usuario rechaza merge staging → main | Staging permanece. Registrar razón en engram. Esperar nueva instrucción. |
 
-**Estado adicional del grafo:**
+**Estados del grafo:**
 ```
-BLOQUEADA_POR_DISEÑO → Domain Orchestrator no pudo construir un plan válido.
+BLOQUEADA           → tiene dependencias sin completar
+LISTA               → dependencias completadas, esperando activación
+EN_EJECUCIÓN        → Domain Orchestrator y expertos activos
+GATE_PENDIENTE      → esperando aprobación del entorno de control
+COMPLETADA          → código en staging, gate aprobado
+BLOQUEADA_POR_DISEÑO → Domain Orchestrator no pudo construir plan válido
                         Requiere intervención del usuario antes de continuar.
 ```
 
 ---
 
-## Estructura de Worktrees que el Master supervisa
+## Estructura de Ramas y Worktrees que el Master supervisa
 
 ```
+Ramas:
+  main
+  └── staging                     ← creada por Master en Paso 4
+      └── feature/<tarea-01>      ← creada por Domain Orchestrator desde staging
+          ├── feature/<tarea-01>/<experto-1>
+          └── feature/<tarea-01>/<experto-2>
+      └── feature/<tarea-02>
+          └── feature/<tarea-02>/<experto-1>
+
+Worktrees (solo para subramas de expertos):
 ./worktrees/
 ├── <tarea-01>/
-│   └── <experto-1>/
-├── <tarea-02>/
 │   ├── <experto-1>/
 │   └── <experto-2>/
+├── <tarea-02>/
+│   └── <experto-1>/
 └── <tarea-N>/
     └── ...
 ```
 
-El Master no interviene en el contenido de los worktrees. Solo supervisa su existencia y estado.
+El Master supervisa existencia y estado de ramas y worktrees, nunca su contenido.
 
 ---
 

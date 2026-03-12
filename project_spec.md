@@ -16,7 +16,7 @@ Desarrollar un endpoint de autenticación robusto que valide credenciales de usu
 - **Estructuras de Datos:** El agente debe justificar en el código el uso de **Dict (Hashmap)** para la caché de tokens revocados, indexada por `jti` (JWT ID). Justificación: el lookup por clave string es O(1) en un dict. Una lista/array sería O(n) para búsqueda por valor, inaceptable bajo carga.
 
 ## 4. Gestión de Eficiencia y Orquestación (OAC)
-- **Aislamiento:** La implementación debe realizarse en un **Git Worktree** independiente (`./worktrees/poc-login`) para evitar ruidos en la ventana de contexto principal.
+- **Aislamiento:** La implementación se realiza en worktrees independientes por experto (`./worktrees/<tarea>/<experto>/`). El código fluye por tres ramas antes de llegar a producción: `feature/<tarea>` → `staging` → `main`.
 - **Carga de Skills:** El orquestador debe invocar la habilidad `/skills/backend-security.md` para aplicar los patrones de seguridad definidos.
 - **Model Orchestration:** Usar modelos de razonamiento (ej. Opus) para la fase de planificación y modelos rápidos (ej. Sonnet) para la generación de código atómico.
 
