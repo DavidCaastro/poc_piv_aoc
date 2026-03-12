@@ -47,7 +47,7 @@ feature/<tarea>              →(Security+Audit aprueban)→  main
 | Ciclo de vida | Persistente (toda la tarea Nivel 2) |
 | Responsabilidad | Construir grafo de dependencias, determinar equipo, coordinar entorno de control |
 | Crea | Entorno de control completo + Domain Orchestrators |
-| Contexto que carga | Solo `project_spec.md` (RF + stack) + estado del grafo |
+| Contexto que carga | `skills/orchestration.md` + `project_spec.md` (RF + stack) + estado del grafo |
 | Ver definición | `registry/orchestrator.md` |
 
 ---
@@ -115,7 +115,7 @@ MONITORIZACIÓN CONTINUA mientras hay expertos paralelos activos:
 | Modelo | Sonnet |
 | Ciclo de vida | Persistente por dominio |
 | Responsabilidad | Planificar dominio, crear rama de tarea, crear expertos y sus subramas |
-| Contexto | Skill relevante de `/skills/` + RF del dominio + grafo de dependencias del dominio |
+| Contexto | `skills/layered-architecture.md` + `skills/backend-security.md` + RF del dominio + grafo |
 | Crea | Rama `feature/<tarea>` + subramas `feature/<tarea>/<experto-N>` + worktrees |
 
 *(El Master crea un Domain Orchestrator por cada dominio identificado en el grafo)*
@@ -128,16 +128,16 @@ MONITORIZACIÓN CONTINUA mientras hay expertos paralelos activos:
 
 | Agente | Modelo | Cuándo se crea | Cuándo se destruye |
 |---|---|---|---|
-| DBArchitect | Sonnet | Diseño de esquemas no trivial | Diseño completado y aprobado |
-| APIDesigner | Sonnet | Contratos de interfaz nuevos | Contratos definidos y aprobados |
+| DBArchitect | Sonnet | Diseño de esquemas no trivial | Diseño completado y aprobado | `skills/layered-architecture.md` (capa data) |
+| APIDesigner | Sonnet | Contratos de interfaz nuevos | Contratos definidos y aprobados | `skills/api-design.md` |
 
 #### Temporales (una tarea atómica, se destruyen al reportar)
 
 | Agente | Modelo | Tarea | Input | Output |
 |---|---|---|---|---|
-| CodeImplementer | Sonnet/Haiku | Implementar función/módulo | Spec atómica + skill | Código |
-| SchemaValidator | Haiku | Validar schema o contrato | Schema + criterios | VÁLIDO/INVÁLIDO |
-| TestWriter | Sonnet | Escribir tests para una unidad | Código de la unidad | Tests |
+| CodeImplementer | Sonnet/Haiku | Implementar función/módulo | Spec atómica + `skills/layered-architecture.md` | Código |
+| SchemaValidator | Haiku | Validar schema o contrato | Schema + `skills/api-design.md` | VÁLIDO/INVÁLIDO |
+| TestWriter | Sonnet | Escribir tests para una unidad | Código + `skills/testing.md` | Tests |
 | DocGenerator | Haiku | Documentar una decisión | Decisión técnica | Entrada para engram |
 
 *Haiku si la tarea es mecánica y clara. Sonnet si requiere razonamiento sobre patrones.*
