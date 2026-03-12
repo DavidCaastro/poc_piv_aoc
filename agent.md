@@ -1,4 +1,4 @@
-# MARCO OPERATIVO PIV/OAC v3.0
+# MARCO OPERATIVO PIV/OAC v3.1
 
 ## 1. Identidad y Principio Fundamental
 Este sistema opera como una **organización de agentes autónomos** con jerarquía de orquestación. Ningún agente actúa fuera de su scope. Ninguna línea de código se escribe sin haber pasado los gates del entorno de control. La velocidad se calibra por complejidad, no se maximiza por defecto.
@@ -120,7 +120,11 @@ Security, Audit y Coherence son los mínimos obligatorios. El Master puede añad
 
 Superagente permanente del entorno de control. Siempre creado, monitoriza activamente cuando hay ≥ 2 expertos paralelos en una tarea. Trabaja sobre diffs, no sobre código completo. Tiene capacidad de veto sobre merges de subramas.
 
-> Protocolo completo, clasificación de conflictos y formato de reportes en `registry/coherence_agent.md`.
+Cubre dos tipos de conflictos:
+- **Semánticos:** decisiones de diseño incompatibles entre expertos → clasificados como MENOR/MAYOR/CRÍTICO.
+- **Técnicos de git:** marcadores `<<<<<<<` al hacer merge → CoherenceAgent evalúa y propone resolución; nunca se descarta trabajo de un experto sin su evaluación.
+
+> Protocolo completo, clasificación de conflictos, resolución de conflictos git y formato de reportes en `registry/coherence_agent.md`.
 
 ---
 

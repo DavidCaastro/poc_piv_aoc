@@ -10,46 +10,63 @@
 
 ## Patrón 1: Descomposición del Objetivo en Tareas
 
-El objetivo se descompone siguiendo estas dimensiones de análisis:
+El objetivo se descompone siguiendo dimensiones de análisis universales. Los nombres de tarea son adaptables al stack del proyecto (indicado en `project_spec.md`).
 
 ```
-1. DIMENSIÓN DE DATOS
-   ¿El objetivo requiere acceso, diseño o modificación de esquemas de BD?
-   → TAREA: data-layer
+DIMENSIONES UNIVERSALES — presencia en el objetivo → tarea en el grafo:
+
+1. DIMENSIÓN DE PERSISTENCIA
+   ¿El objetivo accede, diseña o modifica esquemas de datos o almacenamiento?
+   → TAREA: <capa-datos> (ej: data-layer, db-schema, storage-module)
 
 2. DIMENSIÓN DE LÓGICA DE NEGOCIO
    ¿El objetivo requiere lógica de dominio, validaciones, cálculos, servicios?
-   → TAREA: domain-layer
+   → TAREA: <capa-dominio> (ej: domain-layer, business-logic, core-service)
 
 3. DIMENSIÓN DE INTERFAZ
-   ¿El objetivo expone endpoints, schemas de entrada/salida, contratos de API?
-   → TAREA: transport-layer
+   ¿El objetivo expone una interfaz: endpoints, UI, CLI, contratos, eventos?
+   → TAREA: <capa-interfaz> (ej: transport-layer, api-layer, ui-layer, cli)
 
 4. DIMENSIÓN DE VERIFICACIÓN
-   ¿El objetivo requiere tests unitarios, de integración o de contrato?
+   ¿El objetivo requiere tests unitarios, de integración, de contrato o e2e?
    → TAREA: tests
 
 5. DIMENSIÓN DE DOCUMENTACIÓN
    ¿Hay decisiones técnicas que deben persistirse en el engram?
-   → TAREA: docs (temporal, paralela)
+   → TAREA: docs (siempre temporal y paralela)
 ```
 
-Cada dimensión presente en el objetivo genera una tarea en el grafo.
+**Dimensiones opcionales según el objetivo:**
+```
+6. DIMENSIÓN DE INFRAESTRUCTURA
+   ¿El objetivo requiere configuración de entorno, CI/CD, contenedores, IaC?
+   → TAREA: infra
+
+7. DIMENSIÓN DE INTEGRACIÓN
+   ¿El objetivo conecta con servicios externos, webhooks, colas de mensajes?
+   → TAREA: integration-layer
+```
+
+El Master Orchestrator determina qué dimensiones aplican leyendo el objetivo y el stack del `project_spec.md`. Si no hay suficiente información en la spec para determinar las dimensiones → solicitar al usuario antes de construir el grafo.
+
+Cada dimensión presente genera exactamente una tarea en el grafo.
 
 ---
 
 ## Patrón 2: Determinación de Dependencias (Secuencial vs Paralela)
 
 ```python
-# Reglas de dependencia entre dimensiones estándar:
+# Reglas de dependencia universales (adaptar nombres de tarea al stack del proyecto):
 
 DEPENDENCIAS = {
-    "data-layer":      [],                    # Sin deps → PARALELA
-    "domain-layer":    [],                    # Sin deps → PARALELA
-    "transport-layer": ["domain-layer"],      # Necesita contratos del dominio → SECUENCIAL
-    "tests":           ["transport-layer"],   # Necesita código implementado → SECUENCIAL
-    "docs":            ["data-layer",
-                        "domain-layer"],      # Puede documentar desde que hay diseño → PARALELA con tests
+    "<capa-datos>":      [],                      # Sin deps → PARALELA
+    "<capa-dominio>":    [],                      # Sin deps → PARALELA
+    "<capa-interfaz>":   ["<capa-dominio>"],      # Necesita contratos del dominio → SECUENCIAL
+    "tests":             ["<capa-interfaz>"],     # Necesita código implementado → SECUENCIAL
+    "docs":              ["<capa-datos>",
+                          "<capa-dominio>"],      # Puede documentar desde diseño → PARALELA con tests
+    "infra":             [],                      # Generalmente independiente → PARALELA
+    "integration-layer": ["<capa-dominio>"],      # Necesita contratos de servicio → SECUENCIAL
 }
 
 # Una tarea es PARALELA si su lista de deps está vacía o todas sus deps ya completaron.
@@ -57,6 +74,15 @@ DEPENDENCIAS = {
 ```
 
 **Regla de paralelismo:** Dos tareas pueden ejecutarse en paralelo si ninguna depende del output de la otra, independientemente de su posición en el grafo.
+
+**Protocolo si el grafo no se puede construir:**
+```
+Si el Master Orchestrator detecta ambigüedad irresolvible en las dependencias:
+1. Listar las dependencias específicas que son ambiguas
+2. Presentar al usuario las alternativas con sus trade-offs
+3. Esperar decisión del usuario antes de continuar
+4. No crear ningún agente ni worktree mientras el grafo tenga ambigüedades
+```
 
 ---
 

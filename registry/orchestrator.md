@@ -23,6 +23,10 @@
 - Leer project_spec.md (solo RF y stack tecnológico)
 - ¿Existe RF que respalde el objetivo? → SÍ: continuar | NO: devolver al usuario
 - ¿Qué nivel de riesgo tiene? → determina superagentes adicionales necesarios
+- ¿La spec tiene información suficiente para descomponer el objetivo en tareas?
+    SÍ: continuar al Paso 2
+    NO: listar las preguntas específicas al usuario antes de proceder
+        Nunca asumir ni inventar información que no esté en la spec.
 ```
 
 ### Paso 2: Construcción del Grafo de Dependencias
@@ -92,15 +96,26 @@ COHERENCE GATE: monitorizando TAREA-02 (2 expertos paralelos)
 Cuando una tarea SECUENCIAL queda desbloqueada (su dependencia completa y pasa el gate), el Master activa su Domain Orchestrator automáticamente.
 
 ### Paso 6: Coordinación de gates
+
+**Definición de "mismo plan":** Un plan revisado que no cambia el componente específico que originó el rechazo (ej. si Security rechazó por credencial hardcodeada y el plan revisado sigue conteniéndola) se considera el mismo plan. Un plan que sí corrige el componente rechazado es un plan nuevo, reiniciando el contador de rechazos.
+
 | Evento | Acción del Master |
 |---|---|
-| Ambos gates (Security + Audit) aprueban plan | Autorizar al Domain Orchestrator: crear worktrees y expertos |
-| Security rechaza (1er rechazo) | Devolver plan al Domain Orchestrator para revisión interna |
-| Security rechaza (2do rechazo consecutivo) | Detener dominio, notificar usuario, solicitar decisión |
-| Audit rechaza | Devolver al Domain Orchestrator para revisión |
+| Ambos gates (Security + Audit) aprueban plan | Autorizar al Domain Orchestrator: crear worktrees y expertos. **Worktrees solo se crean después de esta autorización.** |
+| Security rechaza (1er rechazo) | Devolver plan al Domain Orchestrator con razón específica. Contador de rechazos = 1. |
+| Security rechaza (2do rechazo consecutivo del mismo plan) | Detener dominio, notificar usuario con historial de rechazos, solicitar decisión. |
+| Audit rechaza | Devolver al Domain Orchestrator para revisión. Contador independiente del de Security. |
+| Domain Orchestrator no puede producir un plan válido | Escalar al Master → notificar usuario con descripción del bloqueo. Tarea pasa a estado BLOQUEADA_POR_DISEÑO. |
 | Coherence detecta conflicto crítico | Pausar expertos afectados, escalar al Master → notificar usuario |
+| Agente no responde después de 3 intentos de coordinación | Escalar al orquestador padre. Si el orquestador padre tampoco recibe respuesta → notificar usuario. |
 | Agente solicita escalado de modelo | Evaluar y reasignar o escalar a revisión humana |
 | Tarea desbloqueada por completarse su dependencia | Activar Domain Orchestrator correspondiente |
+
+**Estado adicional del grafo:**
+```
+BLOQUEADA_POR_DISEÑO → Domain Orchestrator no pudo construir un plan válido.
+                        Requiere intervención del usuario antes de continuar.
+```
 
 ---
 

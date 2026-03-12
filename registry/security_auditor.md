@@ -127,13 +127,28 @@ RF-04 (Error 401 genérico):
 VEREDICTO FINAL: APROBADO | RECHAZADO
 ```
 
+### Registro de Decisiones de Gate (escritura en acciones_realizadas.txt)
+
+El AuditAgent registra **toda decisión de gate** en tiempo real, no solo al cierre. Formato:
+
+```
+[TIMESTAMP] GATE: <tipo> — <Security|Audit|Coherence>
+[TIMESTAMP] TAREA: feature/<tarea>
+[TIMESTAMP] PLAN_VERSION: <n>  ← incrementar por cada revisión del plan
+[TIMESTAMP] VEREDICTO: APROBADO | RECHAZADO
+[TIMESTAMP] RAZÓN: <texto específico si rechazado>
+[TIMESTAMP] ACCIÓN_SIGUIENTE: <continuar|revisar plan|escalar usuario>
+```
+
+Esto permite reconstruir el historial de rechazos para aplicar correctamente la regla del "mismo plan" (ver `registry/orchestrator.md` Paso 6).
+
 ### Actualización del Engram (escritura exclusiva)
 ```markdown
 ## Sesión [FECHA] — [nombre de la tarea]
 - Agentes creados: <lista con modelos>
 - Decisiones técnicas: <lista>
 - Patrones aplicados: <lista de skills usados>
-- Gates: <n aprobados> / <n totales>
+- Gates: <n aprobados> / <n totales> | Rechazos por iteración: <detalle>
 - Resultado: APROBADO | RECHAZADO
 - Observaciones para próxima sesión: <texto>
 ```

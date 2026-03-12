@@ -102,6 +102,30 @@ CUANDO todos los expertos reportan completado:
 
 ---
 
+## Protocolo de Conflictos Git Técnicos
+
+El CoherenceAgent maneja conflictos lógicos (semánticos). Los conflictos técnicos de git (marcadores `<<<<<<<`) son responsabilidad del Domain Orchestrator con el siguiente protocolo:
+
+```
+CUANDO Domain Orchestrator detecta conflicto técnico de git al mergear:
+
+1. IDENTIFICAR el archivo(s) en conflicto y las dos versiones (HEAD vs feature/<experto>)
+2. NOTIFICAR al CoherenceAgent con el diff del conflicto
+3. CoherenceAgent EVALÚA la naturaleza del conflicto:
+   a. Conflicto técnico puro (ej. ambos añadieron imports al mismo archivo):
+      → CoherenceAgent propone resolución concreta (mantener ambos, elegir uno)
+      → Domain Orchestrator aplica y hace commit de resolución
+   b. Conflicto semántico (decisiones incompatibles de diseño):
+      → Tratar como CONFLICTO MAYOR o CRÍTICO según severidad
+      → Seguir protocolo de clasificación estándar
+
+REGISTRAR toda resolución de conflicto técnico en el reporte de coherencia.
+```
+
+**Regla de oro:** Nunca hacer `git merge --strategy-option=theirs` ni descartar cambios de un experto sin que el CoherenceAgent haya evaluado el conflicto.
+
+---
+
 ## Autorización de Merge
 
 El CoherenceAgent emite una autorización explícita antes de que cualquier subrama haga merge a la rama de tarea:
