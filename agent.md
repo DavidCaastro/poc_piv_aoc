@@ -10,10 +10,13 @@ Este sistema opera como una **organización de agentes autónomos** con jerarqu�
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                   MASTER ORCHESTRATOR (Nivel 0)                 │
-│  Recibe objetivo → infiere tareas → construye grafo de          │
-│  dependencias → determina equipo → nunca escribe código         │
+│  1) Recibe objetivo → valida contra spec                        │
+│  2) Construye grafo de dependencias (DAG)                       │
+│  3) Presenta grafo al usuario → espera confirmación             │
+│  4) Crea entorno de control (tras confirmación)                 │
+│  5) Crea Domain Orchestrators → nunca escribe código            │
 └──────────────────────────┬──────────────────────────────────────┘
-                           │ crea primero: entorno de control
+                           │ paso 4: crea entorno de control
           ┌────────────────┼────────────────┐
           ▼                ▼                ▼
    ┌────────────┐  ┌────────────┐  ┌─────────────────┐
@@ -26,10 +29,11 @@ Este sistema opera como una **organización de agentes autónomos** con jerarqu�
    │  SIEMPRE]  │  │  SIEMPRE]  │  │  SIEMPRE]       │
    └────────────┘  └────────────┘  └─────────────────┘
                            │
-                           │ luego crea: agentes de ejecución
+                           │ paso 5: crea agentes de ejecución
                            ▼
                    DOMAIN ORCHESTRATORS
                    uno por dominio identificado
+                   crean ramas, worktrees y expertos
                            │
                            ▼
                    SPECIALIST AGENTS (Nivel 2)
@@ -38,42 +42,20 @@ Este sistema opera como una **organización de agentes autónomos** con jerarqu�
 ```
 
 ### Reglas de la jerarquía
-- **Master Orchestrator:** Infiere tareas, construye el grafo de dependencias, determina cuántos expertos necesita cada tarea. Crea el entorno de control antes que cualquier agente de ejecución.
-- **Entorno de Control (Security + Audit + Coherence + otros que el Master estime):** Activo desde el inicio. Toda ejecución ocurre dentro de este entorno. Tienen capacidad de veto colectivo e independiente.
-- **Domain Orchestrators:** Reciben el grafo, coordinan la ejecución en el orden correcto y crean los Specialist Agents necesarios.
-- **Specialist Agents (Expertos):** Múltiples expertos trabajan en paralelo sobre el mismo scope de una tarea. Cada uno en su propia subrama aislada.
+- **Master Orchestrator:** Valida objetivo, construye el grafo (DAG), presenta al usuario para confirmación, y solo tras confirmar crea el entorno de control y los Domain Orchestrators. Nunca crea worktrees ni escribe código.
+- **Entorno de Control (Security + Audit + Coherence + otros que el Master estime):** Creado tras la confirmación del usuario, antes de cualquier agente de ejecución. Toda ejecución ocurre dentro de este entorno. Tienen capacidad de veto colectivo e independiente.
+- **Domain Orchestrators:** Reciben el grafo, coordinan la ejecución en el orden correcto. **Son responsables de crear**: rama de tarea (`feature/<tarea>`), subramas de expertos (`feature/<tarea>/<experto-N>`), worktrees correspondientes, y Specialist Agents.
+- **Specialist Agents (Expertos):** Múltiples expertos trabajan en paralelo sobre el mismo scope de una tarea. Cada uno en su propia subrama aislada. No crean subagentes.
 
 ---
 
 ## 3. Grafo de Dependencias de Tareas
 
-Antes de crear ningún agente de ejecución, el Master Orchestrator construye el grafo:
+Antes de crear ningún agente, el Master Orchestrator construye el DAG cargando `skills/orchestration.md`. El grafo determina qué tareas son paralelas, cuáles secuenciales, y cuántos expertos necesita cada una.
 
-```
-Análisis del objetivo
-        │
-        ▼
-Identificar todas las tareas necesarias
-        │
-        ▼
-Para cada tarea determinar:
-  ├── ¿Depende del output de otra tarea?  → SECUENCIAL (bloqueada)
-  ├── ¿Sin prerequisitos?                 → PARALELA (arranca de inmediato)
-  └── ¿Cuántos expertos requiere?         → determina número de subramas
+El grafo se presenta al usuario para confirmación antes de crear entorno de control, worktrees o agentes.
 
-Resultado: DAG (grafo dirigido acíclico) de tareas con metadatos
-```
-
-**Formato del grafo (ejemplo para la POC):**
-```
-TAREA-01: [data-layer]       PARALELA    1 experto    sin deps
-TAREA-02: [domain-layer]     PARALELA    2 expertos   sin deps
-TAREA-03: [transport-layer]  SECUENCIAL  1 experto    depende de TAREA-02
-TAREA-04: [tests]            SECUENCIAL  2 expertos   depende de TAREA-03
-TAREA-05: [docs]             PARALELA    1 experto    depende de TAREA-01, TAREA-02
-```
-
-El grafo se presenta al usuario para confirmación antes de crear cualquier worktree o agente.
+> Protocolo completo, formato y patrones en `skills/orchestration.md`.
 
 ---
 
@@ -136,22 +118,9 @@ Security, Audit y Coherence son los mínimos obligatorios. El Master puede añad
 
 ## 6. Coherence Agent — Consistencia entre Expertos Paralelos
 
-Cuando múltiples expertos trabajan en paralelo sobre el mismo scope, el Coherence Agent monitoriza activamente los diffs entre subramas para detectar conflictos antes de que ocurran:
+Superagente permanente del entorno de control. Siempre creado, monitoriza activamente cuando hay ≥ 2 expertos paralelos en una tarea. Trabaja sobre diffs, no sobre código completo. Tiene capacidad de veto sobre merges de subramas.
 
-**Qué monitoriza:**
-- Interfaces modificadas de forma incompatible por dos expertos
-- Decisiones de diseño contradictorias entre subramas
-- Cambios en contratos (schemas, firmas) que invalidan trabajo de otro experto
-- Duplicación de lógica que debería ser compartida
-
-**Cómo actúa según severidad:**
-| Severidad | Acción |
-|---|---|
-| Conflicto menor | Notifica a los expertos afectados, propone reconciliación |
-| Conflicto mayor | Pausa la subrama afectada, escala al Domain Orchestrator |
-| Conflicto crítico | Veto inmediato, escala al Master Orchestrator con informe |
-
-**Autoriza el merge de subramas → rama de tarea** solo cuando todos los expertos han terminado y no hay conflictos pendientes sin resolver.
+> Protocolo completo, clasificación de conflictos y formato de reportes en `registry/coherence_agent.md`.
 
 ---
 
@@ -201,13 +170,22 @@ Plan revisado        Crear worktrees
 
 ## 10. Asignación Dinámica de Modelo
 
-| Dimensión requerida | Modelo |
-|---|---|
-| Construcción del grafo, decisiones arquitectónicas con múltiples trade-offs, evaluación de riesgo crítico | **Opus** |
-| Planificación por dominio, coordinación de expertos, generación con patrones, monitoreo de coherencia | **Sonnet** |
-| Tareas atómicas claras, formateo, lookups, validaciones mecánicas | **Haiku** |
+La capacidad se asigna por dimensión de razonamiento requerida, no por jerarquía fija:
 
-Cualquier agente puede solicitar escalado si la tarea supera su capacidad asignada.
+```
+alta_ambigüedad OR alto_riesgo OR múltiples_trade-offs OR construcción_de_grafo
+    → claude-opus-4-6
+
+planificación_estructurada OR coordinación OR generación_con_patrones OR monitoreo
+    → claude-sonnet-4-6
+
+transformación_mecánica OR lookup OR formateo OR validación_clara
+    → claude-haiku-4-5
+```
+
+Cualquier agente puede solicitar escalado si la tarea supera su capacidad asignada. El orquestador padre decide si reasignar o escalar a revisión humana.
+
+> Catálogo completo de asignaciones por agente en `registry/agent_taxonomy.md`.
 
 ---
 

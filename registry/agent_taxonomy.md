@@ -43,7 +43,7 @@ feature/<tarea>              →(Security+Audit aprueban)→  main
 
 | Campo | Valor |
 |---|---|
-| Modelo | Opus |
+| Modelo | claude-opus-4-6 |
 | Ciclo de vida | Persistente (toda la tarea Nivel 2) |
 | Responsabilidad | Construir grafo de dependencias, determinar equipo, coordinar entorno de control |
 | Crea | Entorno de control completo + Domain Orchestrators |
@@ -57,7 +57,7 @@ feature/<tarea>              →(Security+Audit aprueban)→  main
 #### SecurityAgent
 | Campo | Valor |
 |---|---|
-| Modelo | Opus |
+| Modelo | claude-opus-4-6 |
 | Ciclo de vida | Persistente (toda la tarea) |
 | Responsabilidad | Gate de seguridad pre-código y post-implementación |
 | Capacidad | Veto inmediato sobre cualquier plan o acción |
@@ -67,7 +67,7 @@ feature/<tarea>              →(Security+Audit aprueban)→  main
 #### AuditAgent
 | Campo | Valor |
 |---|---|
-| Modelo | Sonnet |
+| Modelo | claude-sonnet-4-6 |
 | Ciclo de vida | Persistente (toda la tarea) |
 | Responsabilidad | Trazabilidad a spec, veracidad, logs de cierre, engram |
 | Escritura exclusiva | `engram/session_learning.md` y `/logs_veracidad/` |
@@ -77,33 +77,14 @@ feature/<tarea>              →(Security+Audit aprueban)→  main
 #### CoherenceAgent
 | Campo | Valor |
 |---|---|
-| Modelo | Sonnet |
-| Ciclo de vida | Persistente (toda la tarea, activo cuando hay ≥ 2 expertos paralelos) |
+| Modelo | claude-sonnet-4-6 |
+| Ciclo de vida | Siempre creado con el entorno de control. Monitorización activa solo cuando hay ≥ 2 expertos paralelos en una tarea. |
 | Responsabilidad | Detectar y resolver conflictos entre expertos paralelos en subramas |
 | Capacidad | Veto sobre merge de subramas a rama de tarea |
 | Contexto | Diffs entre subramas activas (no el código completo) |
 | Contribuye al engram | Resumen de conflictos detectados y resoluciones aplicadas |
 
-**Protocolo del CoherenceAgent:**
-```
-MONITORIZACIÓN CONTINUA mientras hay expertos paralelos activos:
-
-1. Comparar diffs de subramas activas en busca de:
-   - Modificaciones incompatibles a la misma interfaz
-   - Decisiones de diseño contradictorias
-   - Cambios en contratos que invalidan trabajo de otro experto
-   - Duplicación de lógica que debería ser compartida
-
-2. Clasificar conflicto detectado:
-   MENOR  → notificar expertos afectados + proponer reconciliación
-   MAYOR  → pausar subrama afectada + escalar al Domain Orchestrator
-   CRÍTICO → veto inmediato + escalar al Master Orchestrator + notificar usuario
-
-3. Autorizar merge subrama → rama de tarea SOLO cuando:
-   - Todos los expertos han reportado completado
-   - No hay conflictos pendientes sin resolver
-   - Los outputs son consistentes entre sí
-```
+> Protocolo completo en `registry/coherence_agent.md`.
 
 ---
 
@@ -112,7 +93,7 @@ MONITORIZACIÓN CONTINUA mientras hay expertos paralelos activos:
 #### BackendOrchestrator (ejemplo)
 | Campo | Valor |
 |---|---|
-| Modelo | Sonnet |
+| Modelo | claude-sonnet-4-6 |
 | Ciclo de vida | Persistente por dominio |
 | Responsabilidad | Planificar dominio, crear rama de tarea, crear expertos y sus subramas |
 | Contexto | `skills/layered-architecture.md` + `skills/backend-security.md` + RF del dominio + grafo |
@@ -126,19 +107,19 @@ MONITORIZACIÓN CONTINUA mientras hay expertos paralelos activos:
 
 #### Persistentes (viven durante el dominio)
 
-| Agente | Modelo | Cuándo se crea | Cuándo se destruye |
-|---|---|---|---|
-| DBArchitect | Sonnet | Diseño de esquemas no trivial | Diseño completado y aprobado | `skills/layered-architecture.md` (capa data) |
-| APIDesigner | Sonnet | Contratos de interfaz nuevos | Contratos definidos y aprobados | `skills/api-design.md` |
+| Agente | Modelo | Cuándo se crea | Cuándo se destruye | Skill |
+|---|---|---|---|---|
+| DBArchitect | claude-sonnet-4-6 | Diseño de esquemas no trivial | Diseño completado y aprobado | `skills/layered-architecture.md` |
+| APIDesigner | claude-sonnet-4-6 | Contratos de interfaz nuevos | Contratos definidos y aprobados | `skills/api-design.md` |
 
 #### Temporales (una tarea atómica, se destruyen al reportar)
 
 | Agente | Modelo | Tarea | Input | Output |
 |---|---|---|---|---|
-| CodeImplementer | Sonnet/Haiku | Implementar función/módulo | Spec atómica + `skills/layered-architecture.md` | Código |
-| SchemaValidator | Haiku | Validar schema o contrato | Schema + `skills/api-design.md` | VÁLIDO/INVÁLIDO |
-| TestWriter | Sonnet | Escribir tests para una unidad | Código + `skills/testing.md` | Tests |
-| DocGenerator | Haiku | Documentar una decisión | Decisión técnica | Entrada para engram |
+| CodeImplementer | claude-sonnet-4-6 / claude-haiku-4-5 | Implementar función/módulo | Spec atómica + `skills/layered-architecture.md` | Código |
+| SchemaValidator | claude-haiku-4-5 | Validar schema o contrato | Schema + `skills/api-design.md` | VÁLIDO/INVÁLIDO |
+| TestWriter | claude-sonnet-4-6 | Escribir tests para una unidad | Código + `skills/testing.md` | Tests |
+| DocGenerator | claude-haiku-4-5 | Documentar una decisión | Decisión técnica | Entrada para engram |
 
 *Haiku si la tarea es mecánica y clara. Sonnet si requiere razonamiento sobre patrones.*
 
@@ -148,13 +129,13 @@ MONITORIZACIÓN CONTINUA mientras hay expertos paralelos activos:
 
 ```
 IF alta_ambigüedad OR alto_riesgo OR múltiples_trade-offs OR construcción_de_grafo:
-    modelo = Opus
+    modelo = claude-opus-4-6
 
 ELIF planificación_estructurada OR coordinación OR generación_con_patrones OR monitoreo:
-    modelo = Sonnet
+    modelo = claude-sonnet-4-6
 
 ELIF transformación_mecánica OR lookup OR formateo OR validación_clara:
-    modelo = Haiku
+    modelo = claude-haiku-4-5
 ```
 
 **Escalado:** Cualquier agente puede solicitar reasignación de modelo si detecta que la tarea supera su capacidad. El orquestador padre decide.
@@ -196,6 +177,6 @@ Destrucción forzada  →  2 rechazos consecutivos del gate → Master notifica 
 | Security rechaza 2 veces el mismo plan | Escalar a usuario para decisión humana |
 | Coherence detecta conflicto crítico | Veto + escalar a Master + notificar usuario |
 | Domain Orchestrator detecta RF no documentado | Escalar a Master → usuario |
-| Tarea Nivel 1 crece en scope | Escalar a Nivel 2, notificar usuario, activar entorno de control |
+| Tarea Nivel 1 crece en scope | Notificar al usuario ANTES de escalar → esperar confirmación → activar entorno de control |
 | Prompt Injection detectado | Veto inmediato del entorno de control + notificar usuario |
 | Tarea SECUENCIAL desbloqueada | Master activa su Domain Orchestrator automáticamente |

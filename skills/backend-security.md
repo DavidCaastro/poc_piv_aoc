@@ -10,18 +10,9 @@
 
 ## Patrón 1: Estructura de Capas
 
-```
-src/
-├── transport/        # Capa Transporte: routers FastAPI, request/response schemas
-│   └── auth_router.py
-├── domain/           # Capa Dominio: lógica de negocio pura, sin dependencias externas
-│   ├── auth_service.py
-│   └── token_cache.py
-└── data/             # Capa Datos: acceso a BD exclusivamente vía MCP
-    └── user_repository.py
-```
+> Estructura de carpetas, reglas de importación y patrones de implementación por capa en `skills/layered-architecture.md`.
 
-**Regla:** Las capas solo se comunican hacia abajo (Transporte → Dominio → Datos). Nunca al revés.
+Resumen: `transport/` → `domain/` → `data/`. Flujo unidireccional estricto. Nunca al revés.
 
 ---
 

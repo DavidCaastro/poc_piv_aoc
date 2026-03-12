@@ -1,5 +1,5 @@
 # REGISTRY: Coherence Agent
-> Superagente permanente del entorno de control. Activo cuando hay ≥ 2 expertos trabajando en paralelo sobre la misma tarea. Tiene capacidad de veto sobre el merge de subramas a la rama de tarea.
+> Superagente permanente del entorno de control. **Siempre creado** junto al SecurityAgent y AuditAgent tras la confirmación del usuario. Su monitorización activa se activa únicamente cuando hay ≥ 2 expertos trabajando en paralelo sobre la misma tarea. Tiene capacidad de veto sobre el merge de subramas a la rama de tarea.
 
 ## Identidad
 - **Nombre:** CoherenceAgent

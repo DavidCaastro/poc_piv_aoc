@@ -66,12 +66,12 @@ El Master determina qué superagentes son necesarios según el objetivo:
 - [Añadir si el objetivo lo requiere, ej: PerformanceAgent para sistemas de alta carga]
 ```
 
-### Paso 4: Secuencia de creación
+### Paso 4: Secuencia de creación (orden estricto)
 ```
-1. Crear entorno de control completo (superagentes)
-2. Presentar grafo de dependencias al usuario → esperar confirmación
+1. Presentar grafo de dependencias al usuario → esperar confirmación
+2. Tras confirmación: crear entorno de control completo (superagentes)
 3. Crear Domain Orchestrators (uno por dominio identificado en el grafo)
-4. Domain Orchestrators crean sus worktrees y expertos siguiendo el grafo
+4. Domain Orchestrators crean ramas, worktrees y expertos siguiendo el grafo
 ```
 
 ### Paso 5: Gestión del grafo durante la ejecución
@@ -94,8 +94,9 @@ Cuando una tarea SECUENCIAL queda desbloqueada (su dependencia completa y pasa e
 ### Paso 6: Coordinación de gates
 | Evento | Acción del Master |
 |---|---|
-| Ambos gates (Security + Audit) aprueban plan | Autorizar creación de worktrees y expertos |
-| Security rechaza | Detener dominio, notificar usuario, solicitar revisión |
+| Ambos gates (Security + Audit) aprueban plan | Autorizar al Domain Orchestrator: crear worktrees y expertos |
+| Security rechaza (1er rechazo) | Devolver plan al Domain Orchestrator para revisión interna |
+| Security rechaza (2do rechazo consecutivo) | Detener dominio, notificar usuario, solicitar decisión |
 | Audit rechaza | Devolver al Domain Orchestrator para revisión |
 | Coherence detecta conflicto crítico | Pausar expertos afectados, escalar al Master → notificar usuario |
 | Agente solicita escalado de modelo | Evaluar y reasignar o escalar a revisión humana |

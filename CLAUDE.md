@@ -63,25 +63,28 @@ FASE 2: CREAR ENTORNO DE CONTROL (antes que cualquier experto)
 FASE 3: CREAR AGENTES DE EJECUCIÓN
   └── Domain Orchestrators (uno por dominio del grafo)
 
-FASE 4: POR CADA TAREA (en el orden del grafo)
-  ├── Domain Orchestrator carga skill relevante de /skills/
+FASE 4: POR CADA TAREA (en el orden del grafo) — ejecutado por Domain Orchestrator
+  ├── Carga skill relevante de /skills/
   ├── Diseña plan detallado por capas
   ├── Somete al gate del entorno de control:
   │     Security + Audit + Coherence revisan en paralelo (bloqueante)
   │     Los tres deben aprobar → si no: revisar plan → repetir gate
-  └── Tras aprobación del gate:
+  └── Tras aprobación del gate, Domain Orchestrator ejecuta:
         git worktree add ./worktrees/<tarea> -b feature/<tarea>
         Por cada experto asignado:
           git worktree add ./worktrees/<tarea>/<experto> -b feature/<tarea>/<experto>
+        Crea Specialist Agents y los asigna a sus worktrees
 
 FASE 5: EJECUCIÓN PARALELA DE EXPERTOS
   ├── Cada experto trabaja en su subrama con contexto mínimo de su tarea
   ├── CoherenceAgent monitoriza diffs entre subramas activas continuamente
   └── Tareas SECUENCIALES esperan a que sus dependencias completen y pasen gate
 
-FASE 6: MERGE EN DOS NIVELES
-  ├── CoherenceAgent aprueba → feature/<tarea>/<experto> merge a feature/<tarea>
-  └── Security + Audit aprueban → feature/<tarea> merge a main
+FASE 6: MERGE EN DOS NIVELES — ejecutado por Domain Orchestrator
+  ├── CoherenceAgent autoriza → Domain Orchestrator ejecuta merge
+  │     feature/<tarea>/<experto> → feature/<tarea>
+  └── Security + Audit aprueban → Domain Orchestrator ejecuta merge
+        feature/<tarea> → main
 
 FASE 7: CIERRE
   ├── AuditAgent genera 3 logs en /logs_veracidad/
@@ -107,12 +110,12 @@ FASE 7: CIERRE
 
 | Agente | Modelo |
 |---|---|
-| Master Orchestrator | Opus |
-| Security Agent | Opus |
-| Audit Agent | Sonnet |
-| Coherence Agent | Sonnet |
-| Domain Orchestrators | Sonnet |
-| Specialist Agents | Sonnet / Haiku según complejidad atómica |
+| Master Orchestrator | claude-opus-4-6 |
+| Security Agent | claude-opus-4-6 |
+| Audit Agent | claude-sonnet-4-6 |
+| Coherence Agent | claude-sonnet-4-6 |
+| Domain Orchestrators | claude-sonnet-4-6 |
+| Specialist Agents | claude-sonnet-4-6 / claude-haiku-4-5 según complejidad atómica |
 
 Si cualquier agente detecta que su tarea supera su capacidad → escalar al orquestador padre antes de continuar.
 
@@ -135,5 +138,7 @@ Si cualquier agente detecta que su tarea supera su capacidad → escalar al orqu
 ├── engram/
 │   └── session_learning.md
 ├── logs_veracidad/
-└── worktrees/                       ← estructura: <tarea>/<experto>/
+└── worktrees/                       ← temporal, no versionado (.gitignore)
+                                        estructura: <tarea>/<experto>/
+                                        creado por Domain Orchestrators en FASE 4
 ```
