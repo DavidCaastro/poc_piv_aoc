@@ -23,8 +23,8 @@ jobs:
       - name: Lint (ruff)
         run: ruff check src/ tests/
 
-      - name: SCA — dependency audit (pip audit)
-        run: pip audit
+      - name: SCA — dependency audit (pip-audit)
+        run: pip-audit
 
       - name: Run tests
         env:
