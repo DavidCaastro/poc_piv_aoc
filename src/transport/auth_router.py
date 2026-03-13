@@ -62,19 +62,48 @@ async def login(body: LoginRequest, request: Request):
 
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(body: RefreshRequest):
-    """POST /auth/refresh — Get new token pair from refresh token (RF-02).
+    """POST /auth/refresh — Get new token pair from refresh token (RF-02, RF-12).
 
     Validates the refresh token, revokes it, and issues a new pair.
+    Records the attempt in the audit log regardless of outcome.
     """
+    # RF-12: Capture user identity from token before consuming it
+    user_id, role = None, None
+    try:
+        refresh_payload = auth_service.verify_token(body.refresh_token)
+        if refresh_payload.type == "refresh":
+            user_id = refresh_payload.sub
+            role = refresh_payload.role
+    except jwt.PyJWTError:
+        pass
+
     result = auth_service.refresh_tokens(body.refresh_token)
 
     if result is None:
+        store.audit_log.append({
+            "user_id": user_id,
+            "role": role,
+            "endpoint": "/auth/refresh",
+            "method": "POST",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status_code": 401,
+            "event": "token_refresh_failed",
+        })
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales invalidas.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    store.audit_log.append({
+        "user_id": user_id,
+        "role": role,
+        "endpoint": "/auth/refresh",
+        "method": "POST",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status_code": 200,
+        "event": "token_refreshed",
+    })
     return result
 
 

@@ -3,7 +3,6 @@
 Covers RF-05, RF-06, and RF-10 scenarios.
 """
 
-import pytest
 from tests.conftest import auth_header
 
 

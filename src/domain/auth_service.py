@@ -20,7 +20,6 @@ import bcrypt
 import jwt
 
 from src.data import store
-from src.schemas.roles import Role
 from src.schemas.tokens import TokenPayload, TokenPair
 from src.schemas.users import UserInDB
 

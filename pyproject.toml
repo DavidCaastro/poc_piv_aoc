@@ -1,0 +1,8 @@
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",  # line too long — docstrings and comments excluded from enforcement
+]

@@ -4,7 +4,6 @@ Covers FIX VULN-004 (security headers), FIX VULN-018 (field length limits),
 and FIX VULN-020 (password length limit).
 """
 
-import pytest
 from tests.conftest import auth_header
 
 

@@ -3,7 +3,6 @@
 Covers RF-06 and RF-08 (audit trail).
 """
 
-import pytest
 from tests.conftest import auth_header
 
 
@@ -38,6 +37,16 @@ class TestResourceCRUD:
                       headers=auth_header(editor_token))
         assert r.status_code == 200
         assert r.json()["title"] == "Updated"
+
+    def test_update_resource_description(self, client, editor_token):
+        """RF-15: PUT /resources/{id} updates description field (covers resources_router.py:63)."""
+        client.post("/resources", json={"title": "Original", "description": "Initial"},
+                   headers=auth_header(editor_token))
+        r = client.put("/resources/1", json={"description": "Updated description"},
+                      headers=auth_header(editor_token))
+        assert r.status_code == 200
+        assert r.json()["description"] == "Updated description"
+        assert r.json()["title"] == "Original"
 
     def test_editor_cannot_update_other_users_resource(self, client, admin_token, editor_token):
         """FIX VULN-016: EDITOR cannot update a resource created by a different user."""
@@ -100,3 +109,34 @@ class TestAuditTrail:
         for field in required_fields:
             assert field in entry, f"Missing field: {field}"
             assert entry[field] is not None, f"Field '{field}' is None for authenticated request"
+
+    def test_audit_log_records_rbac_denial(self, client, viewer_token, admin_token):
+        """RF-11: RBAC denials (403) are recorded in audit log with event=rbac_denied."""
+        # Viewer tries to delete (403 RBAC)
+        client.delete("/resources/999", headers=auth_header(viewer_token))
+
+        r = client.get("/admin/audit-log", headers=auth_header(admin_token))
+        logs = r.json()
+        denied_entries = [e for e in logs if e.get("event") == "rbac_denied"]
+        assert len(denied_entries) >= 1
+        entry = denied_entries[0]
+        assert entry["status_code"] == 403
+        assert entry["user_id"] is not None
+        assert entry["role"] is not None
+
+    def test_audit_log_records_rate_limit_exceeded(self, client, viewer_token, admin_token):
+        """RF-11: Rate limit exceeded (429) is recorded in audit log with event=rate_limit_exceeded."""
+        headers = auth_header(viewer_token)
+        # Exhaust viewer's limit (10 req/min)
+        for _ in range(10):
+            client.get("/resources", headers=headers)
+        # 11th request → 429
+        client.get("/resources", headers=headers)
+
+        r = client.get("/admin/audit-log", headers=auth_header(admin_token))
+        logs = r.json()
+        rate_entries = [e for e in logs if e.get("event") == "rate_limit_exceeded"]
+        assert len(rate_entries) >= 1
+        entry = rate_entries[0]
+        assert entry["status_code"] == 429
+        assert entry["user_id"] is not None

@@ -1,0 +1,45 @@
+# Version control
+.git
+.gitignore
+
+# GitHub configuration
+.github
+
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Test artifacts
+tests/
+.pytest_cache
+.coverage
+htmlcov/
+
+# Development
+.env
+.vscode/
+.idea/
+
+# PIV/OAC framework files (agent-configs branch content)
+worktrees/
+gates/
+logs_veracidad/
+engram/
+skills/
+registry/
+CLAUDE.md
+agent.md
+project_spec.md
+security_vault.md
+
+# Claude
+.claude/

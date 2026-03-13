@@ -6,7 +6,6 @@ Covers RF-01, RF-02, RF-03, RF-04, RF-09, and RF-10 scenarios.
 import time
 
 import jwt as pyjwt
-import pytest
 from tests.conftest import auth_header
 
 
@@ -130,6 +129,29 @@ class TestRefresh:
         # Second refresh with same token fails (revoked)
         r2 = client.post("/auth/refresh", json={"refresh_token": old_refresh})
         assert r2.status_code == 401
+
+    def test_refresh_success_recorded_in_audit_log(self, client, admin_tokens, admin_token):
+        """RF-12: Successful token refresh is recorded in audit log with event=token_refreshed."""
+        client.post("/auth/refresh", json={"refresh_token": admin_tokens["refresh_token"]})
+
+        r = client.get("/admin/audit-log", headers=auth_header(admin_token))
+        logs = r.json()
+        refresh_entries = [e for e in logs if e.get("event") == "token_refreshed"]
+        assert len(refresh_entries) >= 1
+        entry = refresh_entries[0]
+        assert entry["status_code"] == 200
+        assert entry["user_id"] is not None
+
+    def test_refresh_failure_recorded_in_audit_log(self, client, admin_token):
+        """RF-12: Failed token refresh is recorded in audit log with event=token_refresh_failed."""
+        client.post("/auth/refresh", json={"refresh_token": "invalid.token.here"})
+
+        r = client.get("/admin/audit-log", headers=auth_header(admin_token))
+        logs = r.json()
+        failed_entries = [e for e in logs if e.get("event") == "token_refresh_failed"]
+        assert len(failed_entries) >= 1
+        entry = failed_entries[0]
+        assert entry["status_code"] == 401
 
 
 class TestLogout:

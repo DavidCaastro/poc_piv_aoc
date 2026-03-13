@@ -64,6 +64,15 @@ async def check_rbac(
     method = request.method
 
     if not check_permission(current_user.role, endpoint, method):
+        store.audit_log.append({
+            "user_id": current_user.sub,
+            "role": current_user.role,
+            "endpoint": endpoint,
+            "method": method,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status_code": 403,
+            "event": "rbac_denied",
+        })
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permisos insuficientes.",
@@ -82,6 +91,15 @@ async def check_rate(
     Chain: auth -> rbac -> rate_limit (correct order).
     """
     if not check_rate_limit(current_user.sub, current_user.role):
+        store.audit_log.append({
+            "user_id": current_user.sub,
+            "role": current_user.role,
+            "endpoint": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status_code": 429,
+            "event": "rate_limit_exceeded",
+        })
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Limite de solicitudes excedido.",
