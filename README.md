@@ -9,7 +9,7 @@
 
 Una plataforma API autocontenida con autenticación JWT, control de acceso basado en roles (RBAC), rate limiting in-memory y audit trail inmutable. Desarrollada como prueba de concepto del marco **PIV/OAC**: un sistema multi-agente con gates de seguridad, auditoría y coherencia activos en todo momento.
 
-No requiere conexiones externas. Todos los datos son in-memory. Verificable por cualquier usuario con acceso al repositorio ejecutando `pytest`.
+Verificable de dos formas: ejecutando `pytest` localmente (sin credenciales) o usando la API desplegada en `https://poc-piv-aoc-v1.onrender.com/docs`.
 
 ---
 
@@ -118,14 +118,27 @@ El middleware chain sigue el orden de seguridad correcto verificado por Security
 
 ---
 
+## API en producción
+
+```
+https://poc-piv-aoc-v1.onrender.com/docs
+```
+
+Usuarios de prueba disponibles directamente. La instancia puede tardar ~30 s en arrancar si lleva tiempo inactiva (free tier de Render).
+
+---
+
 ## Stack
 
 | Componente | Tecnología |
 |---|---|
 | Framework | FastAPI |
-| Lenguaje | Python 3.10 |
+| Lenguaje | Python 3.11 |
 | Autenticación | JWT (PyJWT >= 2.8.0) + BCrypt (cost 12) |
-| Almacenamiento | In-memory (dict / list) |
+| Almacenamiento | In-memory (seed en cada arranque) |
+| Rate limiting | Upstash Redis (sliding window) / in-memory fallback |
+| Deploy | Render (free tier) |
+| CI | GitHub Actions (tests en cada push) |
 | Tests | pytest + httpx + pytest-cov |
 
 ---
