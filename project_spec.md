@@ -1,13 +1,24 @@
-# ESPECIFICACIÓN TÉCNICA: POC LOGIN SEGURO PIV/OAC v1.0
+# ESPECIFICACIÓN TÉCNICA: POC LOGIN SEGURO PIV/OAC v2.0
 
 ## 1. Intención General del Sistema
 Desarrollar un endpoint de autenticación robusto que valide credenciales de usuario y devuelva un token JWT, implementado bajo un flujo multiagente que garantice la trazabilidad y eficiencia del contexto.
 
 ## 2. Requerimientos Funcionales (Contrato de Intención)
+
+### v1.0 — Autenticación base
 - **RF-01 (Autenticación):** El sistema debe recibir email y contraseña mediante un endpoint `POST /login`.
-- **RF-02 (Seguridad):** Las contraseñas deben ser comparadas utilizando hasheo **BCrypt** (No texto plano).
+- **RF-02 (Seguridad):** Las contraseñas deben ser comparadas utilizando hasheo **BCrypt** (No texto plano). `max_length=72` obligatorio (bcrypt>=4.1 lanza ValueError para inputs >72 bytes).
 - **RF-03 (Autorización):** Si las credenciales son válidas, devolver un token **JWT** con expiración de 1 hora.
 - **RF-04 (Manejo de Errores):** Devolver error HTTP 401 si las credenciales fallan, con mensajes que no revelen información sensible.
+
+### v2.0 — Trazabilidad, calidad y operaciones (derivados de auditoría 2026-03-13)
+- **RF-11 (Audit trail completo):** El audit log debe registrar eventos de denegación RBAC (403, `event: rbac_denied`) y rate limit (429, `event: rate_limit_exceeded`) con `status_code` real. No solo eventos de autenticación exitosa.
+- **RF-12 (Audit de refresh):** El endpoint `POST /auth/refresh` debe registrar en el audit log: `token_refreshed` (éxito) y `token_refresh_failed` (fallo), incluyendo `user_id` y `role` cuando sea posible.
+- **RF-13 (CI/CD hardening):** El pipeline de CI debe incluir: linting con `ruff` (enforce F401, E/W; ignorar E501) y análisis de composición de software con `pip audit`. Ambos como gates bloqueantes antes de los tests.
+- **RF-14 (Imagen Docker limpia):** El `Dockerfile` debe acompañarse de `.dockerignore` que excluya: `.git`, `tests/`, `__pycache__`, `.env`, `worktrees/`, `gates/`, `logs_veracidad/`, `engram/`, `skills/`, `registry/`, `CLAUDE.md`.
+- **RF-15 (Cobertura de actualización de descripción):** El endpoint `PUT /resources/{id}` debe tener test explícito que actualice el campo `description` (línea de código previamente sin cobertura).
+- **RF-16 (Política de divulgación responsable):** El repositorio debe incluir `SECURITY.md` en la raíz con: versiones soportadas, alcance, proceso de reporte, timeline de respuesta y política de créditos.
+- **RF-17 (.env.example documentado):** El archivo `.env.example` debe documentar todas las variables de entorno requeridas y opcionales con comentarios inline explicativos y ejemplos de valores seguros.
 
 ## 3. Stack Tecnológico y Restricciones Técnicas
 - **Lenguaje/Framework:** Python 3.10 + FastAPI.
@@ -29,7 +40,7 @@ La POC se considerará exitosa solo si el **AuditAgent** (definido en `/registry
 
 ## 7. Descomposición de Tareas (DAG para el Master Orchestrator)
 
-Tareas esperadas para esta POC, en orden de ejecución:
+### v1.0 — Tareas originales
 
 | ID | Tarea | Tipo | Expertos | Depende de |
 |---|---|---|---|---|
@@ -39,17 +50,33 @@ Tareas esperadas para esta POC, en orden de ejecución:
 | T-04 | tests | SECUENCIAL | 2 | T-03 |
 | T-05 | docs | PARALELA | 1 | T-01, T-02 |
 
-**Fases de ejecución:**
+**Fases de ejecución v1.0:**
 - FASE 1 (paralelas): T-01, T-02, T-05
 - FASE 2 (desbloquea al completar T-02): T-03
 - FASE 3 (desbloquea al completar T-03): T-04
 
-**Skills por tarea:**
+**Skills por tarea (v1.0):**
 - T-01 `data-layer`: `skills/layered-architecture.md`
 - T-02 `domain-layer`: `skills/layered-architecture.md` + `skills/backend-security.md`
 - T-03 `transport-layer`: `skills/layered-architecture.md` + `skills/api-design.md`
 - T-04 `tests`: `skills/testing.md`
 - T-05 `docs`: ninguna (DocGenerator temporal)
+
+### v2.0 — Tareas de mejora (derivadas de auditoría 2026-03-13)
+
+| ID | Tarea | RF | Tipo | Depende de |
+|---|---|---|---|---|
+| T-A | audit-trail | RF-11, RF-12, RF-15 | PARALELA | — |
+| T-B | cicd-hardening | RF-13, RF-14 | PARALELA | — |
+| T-D | security-docs | RF-16, RF-17 | PARALELA | — |
+
+**Fases de ejecución v2.0:**
+- FASE 1 (paralelas): T-A, T-B, T-D (independientes entre sí)
+
+**Skills por tarea (v2.0):**
+- T-A `audit-trail`: `skills/backend-security.md` + `skills/testing.md`
+- T-B `cicd-hardening`: `skills/backend-security.md`
+- T-D `security-docs`: ninguna
 
 ---
 
