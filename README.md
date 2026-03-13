@@ -101,8 +101,9 @@ Contienen los artefactos producidos por el sistema de agentes. Su ciclo de vida 
 |---|---|---|
 | `main` | delivery | Producción. Solo recibe merges desde `staging` con confirmación humana explícita |
 | `staging` | integration | Pre-producción. Integración de todas las tareas. Gate final antes de `main` |
-| `feature/<tarea>` | execution | Rama de tarea. Integra el trabajo de los expertos de esa tarea |
+| `feature/<tarea>` | execution | Rama de tarea (Nivel 2). Integra el trabajo de los expertos de esa tarea |
 | `feature/<tarea>/<experto>` | execution | Subrama de experto. Aislamiento atómico de cada especialista |
+| `fix/<nombre>` | execution | Rama de micro-tarea (Nivel 1). Todo cambio — sin excepción de nivel — parte de aquí |
 
 ---
 
@@ -113,7 +114,8 @@ Contienen los artefactos producidos por el sistema de agentes. Su ciclo de vida 
 
 [artifact]   main           ← delivery. Confirmación humana explícita requerida.
              └── staging    ← integration. Gate final Security + Audit + humano.
-                 └── feature/<tarea>              ← execution
+                 ├── fix/<nombre>                 ← execution (Nivel 1: micro-tarea)
+                 └── feature/<tarea>              ← execution (Nivel 2)
                      ├── feature/<tarea>/experto-1  ← execution (paralela)
                      └── feature/<tarea>/experto-2  ← execution (paralela)
 ```
@@ -140,7 +142,7 @@ Antes de actuar, toda tarea se clasifica en uno de dos niveles:
 
 ### Nivel 1 — Micro-tarea
 Se cumplen **todos** los criterios: ≤ 2 archivos afectados, sin arquitectura nueva, RF documentado, riesgo bajo.
-**Protocolo:** Ejecución directa. Sin orquestación. Zero-Trust y lazy loading aplican igual.
+**Protocolo:** Sin orquestación formal, pero **branch-first obligatorio**: crear `fix/<nombre>` desde la rama base y promover hacia adelante (`fix/` → `staging` → `main`). Nunca commitear directamente en `staging` o `main`. Zero-Trust y lazy loading aplican igual.
 
 ### Nivel 2 — Feature / POC / Objetivo complejo
 Cualquiera de: archivos nuevos, ≥ 3 archivos, arquitectura nueva, RF nuevo o ambiguo, impacto en seguridad.
