@@ -42,7 +42,7 @@ pip install -r requirements-test.txt
 pytest tests/ -v --cov=src --cov-report=term-missing
 ```
 
-Resultado esperado: **55 passed, 93% coverage.**
+Resultado esperado: **60 passed, 93% coverage.**
 
 ---
 
@@ -138,7 +138,7 @@ Usuarios de prueba disponibles directamente. La instancia puede tardar ~30 s en 
 | Almacenamiento | In-memory (seed en cada arranque) |
 | Rate limiting | Upstash Redis (sliding window) / in-memory fallback |
 | Deploy | Render (free tier) |
-| CI | GitHub Actions (tests en cada push) |
+| CI | GitHub Actions (ruff lint + pip-audit SCA + tests en cada push) |
 | Tests | pytest + httpx + pytest-cov |
 
 ---
@@ -157,6 +157,13 @@ Usuarios de prueba disponibles directamente. La instancia puede tardar ~30 s en 
 | RF-08 | Audit trail inmutable in-memory por request autenticado | `test_resources.py:78` |
 | RF-09 | Errores genéricos 401/403/429 sin revelar información sensible | `test_auth.py:44` |
 | RF-10 | ≥ 80% cobertura + 5 escenarios de seguridad obligatorios | 93% / 5 de 5 |
+| RF-11 | Audit log registra 403 (rbac_denied) y 429 (rate_limit_exceeded) | `test_resources.py:98` |
+| RF-12 | `/auth/refresh` registra token_refreshed / token_refresh_failed | `test_auth.py` |
+| RF-13 | CI incluye ruff (lint) y pip-audit (SCA) como gates bloqueantes | `.github/workflows/ci.yml` |
+| RF-14 | `.dockerignore` excluye `.git`, tests, secretos y ficheros del marco | `.dockerignore` |
+| RF-15 | `PUT /resources/{id}` cubre actualización del campo `description` | `test_resources.py:34` |
+| RF-16 | `SECURITY.md` con política de divulgación responsable | `SECURITY.md` |
+| RF-17 | `.env.example` documenta todas las variables con comentarios inline | `.env.example` |
 
 ### Escenarios de seguridad obligatorios (RF-10)
 
@@ -201,6 +208,9 @@ Usuarios de prueba disponibles directamente. La instancia puede tardar ~30 s en 
 
 ### Audit trail
 - Los intentos de login fallidos se registran en el audit log (`event: login_failed`) junto con IP y timestamp
+- Las denegaciones RBAC (403) se registran con `event: rbac_denied` y `status_code: 403`
+- Los eventos de rate limit (429) se registran con `event: rate_limit_exceeded` y `status_code: 429`
+- Los eventos de refresh se registran con `event: token_refreshed` o `token_refresh_failed`
 
 ---
 
