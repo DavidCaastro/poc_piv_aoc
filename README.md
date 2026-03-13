@@ -159,11 +159,35 @@ El middleware chain sigue el orden de seguridad correcto verificado por Security
 
 ## Principios de seguridad aplicados
 
-- **Zero-Trust:** `JWT_SECRET_KEY` solo vía variable de entorno, nunca en código fuente
+### Autenticación y tokens
+- **Zero-Trust:** `JWT_SECRET_KEY` solo vía variable de entorno — la app falla al arrancar si no está definida
 - **Timing-safe:** `verify_password()` se ejecuta aunque el usuario no exista (anti-enumeración)
 - **Mensajes genéricos:** El sistema no distingue entre usuario inexistente y contraseña incorrecta
-- **Revocación O(1):** Caché de tokens revocados como `dict[jti → timestamp]`
-- **Orden de middleware verificado formalmente:** Documentado en `gates/transport-layer/security_review.md`
+- **Revocación O(1):** Caché de tokens revocados como `dict[jti → exp]` — purga automática de entradas expiradas
+- **Revocación de refresh en logout:** El refresh token puede enviarse en el body de `/auth/logout` para ser invalidado simultáneamente con el access token
+- **`iat` claim:** Todos los JWT incluyen issued-at para auditoría y detección de tokens antedatados
+
+### Control de acceso
+- **RBAC + ownership:** Las comprobaciones de rol y de autoría son independientes — un EDITOR solo puede editar sus propios recursos aunque su rol permita la operación
+- **Orden de middleware verificado:** auth → RBAC → rate limiting, documentado en `gates/transport-layer/security_review.md`
+
+### Rate limiting
+- **Por usuario autenticado:** Sliding window 60 s (VIEWER 10, EDITOR 30, ADMIN 100 req/min) — RF-07
+- **Por IP en login:** Sliding window 15 min, máximo 10 intentos — protección contra fuerza bruta en endpoint público
+
+### Hardening de inputs
+- **Límites en campos de texto:** `title` ≤ 200 chars, `description` ≤ 5 000 chars (previene crecimiento ilimitado de memoria)
+- **Límite en contraseña:** ≤ 128 chars (BCrypt trunca a 72 bytes — el límite evita overhead de hashing de entradas masivas)
+- **`extra = "forbid"`** en todos los modelos de request — campos no declarados son rechazados con 422
+
+### Headers HTTP
+- `X-Content-Type-Options: nosniff` — previene MIME sniffing
+- `X-Frame-Options: DENY` — previene clickjacking
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `X-XSS-Protection: 0` — desactiva el filtro legacy (CSP es el mecanismo correcto)
+
+### Audit trail
+- Los intentos de login fallidos se registran en el audit log (`event: login_failed`) junto con IP y timestamp
 
 ---
 
