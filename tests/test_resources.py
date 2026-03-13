@@ -39,6 +39,16 @@ class TestResourceCRUD:
         assert r.status_code == 200
         assert r.json()["title"] == "Updated"
 
+    def test_editor_cannot_update_other_users_resource(self, client, admin_token, editor_token):
+        """FIX VULN-016: EDITOR cannot update a resource created by a different user."""
+        # Admin creates a resource — editor is not the owner
+        client.post("/resources", json={"title": "Admin Resource"},
+                   headers=auth_header(admin_token))
+
+        r = client.put("/resources/1", json={"title": "Hijacked"},
+                      headers=auth_header(editor_token))
+        assert r.status_code == 403
+
     def test_update_nonexistent_resource(self, client, admin_token):
         r = client.put("/resources/999", json={"title": "X"},
                       headers=auth_header(admin_token))
@@ -76,10 +86,17 @@ class TestAuditTrail:
         assert len(logs) >= 2
 
     def test_audit_log_contains_required_fields(self, client, admin_token):
+        """RF-08: Authenticated request entries have all required fields with non-null values."""
         client.get("/resources", headers=auth_header(admin_token))
         r = client.get("/admin/audit-log", headers=auth_header(admin_token))
-        log_entry = r.json()[0]
+        logs = r.json()
+
+        # Filter to authenticated entries (failed logins have user_id=None)
+        authenticated_entries = [e for e in logs if e.get("user_id") is not None]
+        assert len(authenticated_entries) >= 1, "No authenticated entries in audit log"
+        entry = authenticated_entries[0]
 
         required_fields = ["user_id", "role", "endpoint", "method", "timestamp", "status_code"]
         for field in required_fields:
-            assert field in log_entry, f"Missing field: {field}"
+            assert field in entry, f"Missing field: {field}"
+            assert entry[field] is not None, f"Field '{field}' is None for authenticated request"
