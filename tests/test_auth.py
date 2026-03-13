@@ -3,6 +3,9 @@
 Covers RF-01, RF-02, RF-03, RF-04, RF-09, and RF-10 scenarios.
 """
 
+import time
+
+import jwt as pyjwt
 import pytest
 from tests.conftest import auth_header
 
@@ -68,6 +71,29 @@ class TestLogin:
             r = client.post("/auth/login", json={"email": email, "password": password})
             assert r.status_code == 200, f"Failed for {email}"
 
+    def test_login_rate_limit_per_ip(self, client):
+        """FIX VULN-006: After 10 login attempts from same IP -> 429."""
+        for _ in range(10):
+            client.post("/auth/login", json={"email": "nobody@test.com", "password": "Wrong!"})
+        # 11th attempt is blocked — even with valid credentials
+        r = client.post("/auth/login", json={"email": "admin@test.com", "password": "Admin123!"})
+        assert r.status_code == 429
+        assert "intentos" in r.json()["detail"].lower()
+
+    def test_failed_login_recorded_in_audit_log(self, client, admin_token):
+        """FIX VULN-012: Failed login attempts appear in audit log with event=login_failed."""
+        client.post("/auth/login", json={"email": "attacker@evil.com", "password": "WrongPass!"})
+
+        r = client.get("/admin/audit-log", headers=auth_header(admin_token))
+        assert r.status_code == 200
+        logs = r.json()
+        failed_entries = [e for e in logs if e.get("event") == "login_failed"]
+        assert len(failed_entries) >= 1
+        entry = failed_entries[0]
+        assert entry["user_id"] is None
+        assert entry["role"] is None
+        assert entry["status_code"] == 401
+
 
 class TestRefresh:
     """RF-02: POST /auth/refresh accepts valid refresh_token."""
@@ -125,3 +151,54 @@ class TestLogout:
         """Logout without token returns 401."""
         r = client.post("/auth/logout")
         assert r.status_code == 401
+
+    def test_logout_also_revokes_refresh_token(self, client, admin_tokens):
+        """FIX VULN-015: Providing refresh_token in logout body revokes it too."""
+        access_token = admin_tokens["access_token"]
+        refresh_token = admin_tokens["refresh_token"]
+
+        r = client.post(
+            "/auth/logout",
+            json={"refresh_token": refresh_token},
+            headers=auth_header(access_token),
+        )
+        assert r.status_code == 200
+
+        # Refresh token must now be revoked
+        r2 = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+        assert r2.status_code == 401
+
+
+class TestTokenExpiry:
+    """Token expiry and purge edge cases."""
+
+    def test_expired_token_returns_401(self, client):
+        """An expired JWT access token is rejected with 401."""
+        expired_token = pyjwt.encode(
+            {
+                "sub": "user_admin_001",
+                "email": "admin@test.com",
+                "role": "ADMIN",
+                "jti": "test-expired-jti",
+                "type": "access",
+                "iat": int(time.time()) - 7200,
+                "exp": int(time.time()) - 3600,
+            },
+            "test-secret-key-for-testing-only",
+            algorithm="HS256",
+        )
+        r = client.get("/resources", headers=auth_header(expired_token))
+        assert r.status_code == 401
+
+    def test_purge_removes_expired_revoked_tokens(self):
+        """FIX VULN-005: purge_expired_tokens removes entries whose expiry has passed."""
+        from src.data import store as data_store
+        from src.domain.auth_service import purge_expired_tokens
+
+        data_store.revoked_tokens["expired-jti"] = time.time() - 1
+        data_store.revoked_tokens["valid-jti"] = time.time() + 3600
+
+        purge_expired_tokens()
+
+        assert "expired-jti" not in data_store.revoked_tokens
+        assert "valid-jti" in data_store.revoked_tokens

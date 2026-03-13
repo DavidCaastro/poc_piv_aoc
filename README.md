@@ -42,7 +42,7 @@ pip install -r requirements-test.txt
 pytest tests/ -v --cov=src --cov-report=term-missing
 ```
 
-Resultado esperado: **35 passed, 96% coverage.**
+Resultado esperado: **55 passed, 93% coverage.**
 
 ---
 
@@ -156,7 +156,7 @@ Usuarios de prueba disponibles directamente. La instancia puede tardar ~30 s en 
 | RF-07 | Rate limiting sliding window (VIEWER 10, EDITOR 30, ADMIN 100 req/min) | `test_rate_limit.py` |
 | RF-08 | Audit trail inmutable in-memory por request autenticado | `test_resources.py:78` |
 | RF-09 | Errores genéricos 401/403/429 sin revelar información sensible | `test_auth.py:44` |
-| RF-10 | ≥ 80% cobertura + 5 escenarios de seguridad obligatorios | 96% / 5 de 5 |
+| RF-10 | ≥ 80% cobertura + 5 escenarios de seguridad obligatorios | 93% / 5 de 5 |
 
 ### Escenarios de seguridad obligatorios (RF-10)
 
@@ -190,7 +190,7 @@ Usuarios de prueba disponibles directamente. La instancia puede tardar ~30 s en 
 
 ### Hardening de inputs
 - **Límites en campos de texto:** `title` ≤ 200 chars, `description` ≤ 5 000 chars (previene crecimiento ilimitado de memoria)
-- **Límite en contraseña:** ≤ 128 chars (BCrypt trunca a 72 bytes — el límite evita overhead de hashing de entradas masivas)
+- **Límite en contraseña:** ≤ 72 chars (BCrypt>=4.1 lanza `ValueError` para inputs >72 bytes — el límite previene un 500 y elimina overhead)
 - **`extra = "forbid"`** en todos los modelos de request — campos no declarados son rechazados con 422
 
 ### Headers HTTP
@@ -236,7 +236,7 @@ Puede tardar ~30 s en responder si lleva tiempo inactiva (free tier de Render).
 | XSS en campos de texto | La API devuelve JSON — los scripts no se ejecutan |
 | SQL injection | No hay SQL — búsquedas por dict lookup |
 | Campos extra en el body | `extra = "forbid"` → 422 inmediato |
-| Payloads masivos | `title` ≤ 200, `description` ≤ 5 000, `password` ≤ 128 chars |
+| Payloads masivos | `title` ≤ 200, `description` ≤ 5 000, `password` ≤ 72 chars |
 | Tokens manipulados | Firma HS256 verificada — cualquier modificación → 401 |
 | Fuerza bruta en login | 10 intentos / 15 min por IP (Upstash Redis) |
 
