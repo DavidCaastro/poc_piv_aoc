@@ -227,3 +227,50 @@ El SecurityAgent DEBE incluir `requirements.txt` y `requirements-test.txt` en el
 4. **project_spec.md como registro de versiones:** Mantener secciones v1.0/v2.0 separadas en el DAG para que el historial de evolución del producto sea trazable desde la spec.
 
 **Archivos actualizados en agent-configs:** `project_spec.md` (v2.0), `README.md` (60 tests, RF-01 a RF-17), `engram/session_learning.md`
+
+---
+
+## Sesión 2026-03-13 — Auditoría de calificación objetiva + 6 fixes adicionales
+
+**Tarea:** Generar calificación técnica objetiva 1-100 del repositorio y ejecutar todos los fixes derivados sin confirmación.
+
+**Calificación:** 74.3/100 (pre-fix) → **79.8/100** (post-fix)
+**Comparativa:** Senior junior — límite superior mid-level / MVP startup-ready
+
+**6 fixes implementados:**
+
+| Fix | Archivo | Descripción |
+|---|---|---|
+| deque(maxlen=10_000) | `src/data/store.py` | Circular buffer previene OOM en audit_log |
+| Real status_code | `src/main.py`, `src/transport/dependencies.py` | `audit_log_middleware` captura el status_code real después del handler; check_rate ya no asume 200 |
+| Exception handler | `src/main.py` | `@app.exception_handler(Exception)` devuelve 500 genérico, loguea internamente |
+| HSTS header | `src/main.py` | `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
+| Docker non-root | `Dockerfile` | `adduser appuser` + `USER appuser` |
+| Docker HEALTHCHECK | `Dockerfile` | `HEALTHCHECK --interval=30s` vía urllib |
+| CI coverage gate | `.github/workflows/ci.yml` | `--cov-fail-under=90` bloqueante |
+
+**Resultado:** 61 tests (era 60), 93.48% coverage, gate 90% pasado, main.py 100% cubierto.
+
+**Decisiones técnicas críticas:**
+
+1. **`request.state.audit_entry` para status_code real:**
+   - Antes: `check_rate` hacía `store.audit_log.append({...status_code: 200})` antes del handler → siempre 200
+   - Ahora: `check_rate` pone `request.state.audit_entry = {sin status_code}` → `audit_log_middleware` en main.py lo completa con `response.status_code` real tras ejecutar el handler
+   - Los eventos 403/429/401 siguen siendo append directo (correctos ya antes)
+
+2. **deque vs. list para audit_log:**
+   - `deque(maxlen=10_000)` es drop-in replacement para append y clear
+   - El único cambio necesario: `admin_router.py` retorna `list(store.audit_log)` para serialización FastAPI
+   - `deque.clear()` funciona in-place → `reset_store()` no necesita cambios
+
+3. **@app.exception_handler(Exception) + TestClient:**
+   - `raise_server_exceptions=True` en TestClient hace que el cliente re-lance excepciones incluso si el handler las captura
+   - Solución: testear el handler directamente con `asyncio.run(unhandled_exception_handler(mock_request, exc))`
+   - NO intentar provocar una excepción real vía HTTP en tests con el TestClient por defecto
+
+4. **Orden de middlewares en FastAPI:**
+   - Last registered = innermost (runs first on response)
+   - `audit_log_middleware` registrado después de `security_headers` → es el más cercano al handler → ve `request.state` antes de que se limpie
+   - `security_headers` registrado primero → envuelve todo → añade headers a todas las respuestas incluyendo el 500 del exception handler
+
+**Informe de auditoría guardado:** `logs_veracidad/auditoria_tecnica_2026-03-13_v2.md`

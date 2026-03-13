@@ -283,16 +283,16 @@ La especificación activa (`project_spec.md`) ejecutó la construcción de la **
 
 | Métrica | Resultado |
 |---|---|
-| Tests | 60 passed, 0 failed |
-| Cobertura | 93% (mínimo requerido: 80%) |
+| Tests | 61 passed, 0 failed |
+| Cobertura | 93.48% (gate CI: 90% bloqueante) |
 | Secretos en código | 0 |
 | Gates ejecutados | 14 / 14 aprobados |
 | RF cumplidos | RF-01 a RF-17 — todos |
-| Archivos entregados | 63 archivos |
 | Ruff (lint) | 0 errores |
 | pip-audit (SCA) | 0 vulnerabilidades |
+| Calificación técnica | 79.8 / 100 (senior junior — MVP startup-ready) |
 
-El proceso completo está trazado en `gates/` (28 archivos de revisión) y `logs_veracidad/` (3 logs de auditoría + informe de auditoría técnica completa).
+El proceso completo está trazado en `gates/` (28 archivos de revisión) y `logs_veracidad/` (4 informes de auditoría).
 
 ---
 
