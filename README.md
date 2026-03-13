@@ -225,6 +225,10 @@ agent-configs/
 ├── engram/
 │   └── session_learning.md          ← Memoria persistente (escritura: AuditAgent)
 │
+├── docs/
+│   ├── api-reference.md             ← Referencia de la API producida por el marco
+│   └── git-branch-protection.md     ← Reglas de protección de ramas recomendadas
+│
 ├── logs_veracidad/                   ← Generados por AuditAgent al cierre de objetivo
 │   ├── acciones_realizadas.txt      ← Registro cronológico de acciones por agente
 │   ├── uso_contexto.txt             ← Eficiencia de contexto y tokens
@@ -299,3 +303,23 @@ El proceso completo está trazado en `gates/` (28 archivos de revisión) y `logs
 | **Recibe merges de** | Nunca desde artifact | Desde la rama artifact inmediatamente inferior |
 | **Versionado** | Independiente del ciclo de entrega | Sigue el flujo execution → integration → delivery |
 | **Quién la modifica** | El operador humano del marco | Los agentes bajo protocolo PIV/OAC |
+
+---
+
+## Protección de Ramas
+
+La configuración recomendada de branch protection rules está documentada en `docs/git-branch-protection.md`.
+
+Resumen de la política:
+
+| Rama | Protección |
+|---|---|
+| `agent-configs` | **Solo lectura** — Lock branch + PR obligatoria + sin bypass de admin |
+| `main` | Solo el owner puede mergear — no force push |
+| `staging` | Solo el owner puede pushear — no force push |
+| `feature/*` | Solo el owner puede pushear — no force push |
+
+**Flujo para modificar `agent-configs`** (cuando está protegida):
+1. Crear `directive/update-<descripcion>` desde `agent-configs`
+2. Aplicar cambios en esa rama
+3. Abrir PR hacia `agent-configs` → revisar → merge
