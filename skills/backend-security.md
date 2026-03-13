@@ -151,10 +151,16 @@ async def login(body: LoginRequest, auth_service=Depends(get_auth_service)):
 ```txt
 fastapi>=0.111.0
 uvicorn>=0.29.0
-python-jose[cryptography]>=3.3.0   # JWT
+PyJWT>=2.8.0                        # JWT — mantenimiento activo, respuesta rápida a CVEs
+cryptography>=42.0.0                # Backend criptográfico para PyJWT
 bcrypt>=4.1.0                       # Hashing
 pydantic[email]>=2.7.0              # Validación
 ```
+
+> **NOTA:** `python-jose` está desaconsejada. Tiene CVEs activos (CVE-2024-33664, CVE-2024-33663)
+> relacionados con algorithm confusion y `alg: none` bypass. Usar **PyJWT >= 2.8.0** como reemplazo.
+> Diferencia de API: `PyJWT` usa `jwt.encode()` / `jwt.decode()` con el mismo contrato,
+> pero lanza `jwt.ExpiredSignatureError`, `jwt.InvalidTokenError` en lugar de las excepciones de `jose`.
 
 ---
 
@@ -309,8 +315,43 @@ def purge_expired_tokens(revoked_tokens: dict) -> None:
 
 ---
 
+## Patrón 13 — SCA: Análisis de Composición de Software
+
+**Obligatorio en toda auditoría de seguridad.** El SecurityAgent DEBE revisar `requirements.txt`
+(y `requirements-test.txt`) como parte del scope de auditoría, no solo los archivos `src/`.
+
+**Herramienta:**
+```bash
+pip audit                        # Comprueba CVEs contra PyPA Advisory Database
+pip audit --fix                  # Modo interactivo para actualizar paquetes vulnerables
+```
+
+**Criterios de evaluación por dependencia:**
+1. ¿Tiene CVEs activos sin parchear?
+2. ¿Tiene mantenimiento activo (commits recientes, respuesta a issues de seguridad)?
+3. ¿Existe una alternativa más segura con API compatible?
+
+**Dependencias de riesgo conocido en el stack Python/FastAPI:**
+
+| Paquete | Riesgo | Alternativa |
+|---|---|---|
+| `python-jose` | CVE-2024-33664, CVE-2024-33663 | `PyJWT >= 2.8.0` |
+| `python-multipart < 0.0.7` | DoS en parsing | Actualizar a `>= 0.0.7` |
+| `starlette < 0.36.2` | Path traversal | Actualizar vía `fastapi` |
+
+**Checklist SCA:**
+- [ ] `requirements.txt` incluido en el scope de auditoría
+- [ ] `requirements-test.txt` incluido en el scope de auditoría
+- [ ] `pip audit` ejecutado y sin hallazgos críticos o altos sin justificación
+- [ ] Cada dependencia de terceros evaluada: CVEs + actividad de mantenimiento
+- [ ] Ninguna dependencia con CVE activo sin mitigación documentada
+
+---
+
 ## Checklist de Seguridad Pre-Deploy
 
+- [ ] **[SCA]** `pip audit` limpio sobre `requirements.txt` y `requirements-test.txt`
+- [ ] **[SCA]** Ninguna dependencia con CVE activo sin mitigación documentada
 - [ ] Ninguna credencial hardcodeada en el código fuente
 - [ ] SECRET_KEY sin fallback — `os.environ["JWT_SECRET_KEY"]` lanza excepción si no está definida
 - [ ] SECRET_KEY obtenida exclusivamente desde MCP / variable de entorno

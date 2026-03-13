@@ -116,3 +116,25 @@
 5. **Todo dict in-memory con crecimiento ilimitado necesita purga periódica** — tokens revocados, rate windows
 6. **security_vault.md y URLs de infraestructura NUNCA en el repositorio**
 7. **CoherenceAgent escala al SecurityAgent cualquier conflicto que afecte a seguridad** — no resolver unilateralmente
+8. **SCA obligatorio en toda auditoría** — `requirements.txt` es parte del scope; `pip audit` debe ejecutarse; `python-jose` tiene CVEs activos (CVE-2024-33664/33663), reemplazar por `PyJWT >= 2.8.0`
+
+---
+
+## Sesión 2026-03-13 — Gap detectado: SCA ausente en protocolo de auditoría
+
+**Hallazgo:** El SecurityAgent no detectó la dependencia vulnerable `python-jose[cryptography]>=3.3.0` durante la auditoría de seguridad de la sesión anterior.
+
+**Causa raíz:** El scope del audit estaba limitado a archivos `src/`. `requirements.txt` no fue cargado en contexto. El skill `backend-security.md` no tenía patrón de SCA ni checklist para dependencias de terceros.
+
+**Correcciones aplicadas en agent-configs:**
+- `skills/backend-security.md`: añadido **Patrón 13 — SCA** con criterios de evaluación, tabla de riesgo y checklist específico
+- `skills/backend-security.md`: dependencia `python-jose` reemplazada por `PyJWT >= 2.8.0` en la sección "Dependencias Requeridas"
+- `skills/backend-security.md`: checklist Pre-Deploy ampliado con dos ítems `[SCA]` como primeros puntos obligatorios
+- `engram/session_learning.md`: patrón crítico #8 añadido
+
+**Correcciones aplicadas en la aplicación (main/feature/auth-service):**
+- `requirements.txt`: `python-jose[cryptography]>=3.3.0` → `PyJWT>=2.8.0` + `cryptography>=42.0.0`
+- `src/domain/auth_service.py`: migración de API `jose` → `jwt` (PyJWT)
+
+**Regla operativa para futuras sesiones:**
+El SecurityAgent DEBE incluir `requirements.txt` y `requirements-test.txt` en el scope de TODA auditoría de seguridad, ejecutar `pip audit` como primer paso, y evaluar cada dependencia de terceros contra CVEs conocidos y actividad de mantenimiento.
