@@ -1,8 +1,8 @@
 # PIV/OAC — Marco de Configuración Operativa v3.1
 
-> **Rama:** `agent-configs`
+> **Rama:** `agent-configs` | **Tipo:** Directive
 > Esta rama contiene exclusivamente la configuración del sistema de agentes. No contiene código de aplicación.
-> El código producido por este marco vive en la rama `main`.
+> El código producido por este marco vive en las ramas artifact (`main`, `staging`, `feature/*`).
 
 ---
 
@@ -82,28 +82,53 @@ Plan revisado      Crear worktrees
 
 ---
 
-## Flujo de Ramas (Tres Niveles)
+## Tipología de Ramas
+
+El repositorio distingue dos tipos de rama con propósitos y ciclos de vida distintos:
+
+### Rama Directive
+Contiene las directivas que gobiernan el comportamiento del sistema de agentes. No produce artefactos ejecutables. No recibe merges desde ramas artifact. Versiona independientemente el marco operativo.
+
+| Rama | Propósito |
+|---|---|
+| `agent-configs` | Marco PIV/OAC: CLAUDE.md, skills, registry, engram, protocolos de gates |
+
+### Ramas Artifact
+Contienen los artefactos producidos por el sistema de agentes. Su ciclo de vida está gobernado por las directivas de la rama directive.
+
+| Rama | Subtipo | Propósito |
+|---|---|---|
+| `main` | delivery | Producción. Solo recibe merges desde `staging` con confirmación humana explícita |
+| `staging` | integration | Pre-producción. Integración de todas las tareas. Gate final antes de `main` |
+| `feature/<tarea>` | execution | Rama de tarea. Integra el trabajo de los expertos de esa tarea |
+| `feature/<tarea>/<experto>` | execution | Subrama de experto. Aislamiento atómico de cada especialista |
+
+---
+
+## Flujo de Ramas Artifact (Tres Niveles)
 
 ```
-main       ← producción. Solo recibe merges desde staging con confirmación humana explícita.
-└── staging ← pre-producción. Integración de todas las tareas. Gate final.
-    └── feature/<tarea>
-        ├── feature/<tarea>/experto-1   ← subrama experto (paralela)
-        └── feature/<tarea>/experto-2   ← subrama experto (paralela)
+[directive]  agent-configs  ← gobierna el proceso, no participa en el flujo de merge
+
+[artifact]   main           ← delivery. Confirmación humana explícita requerida.
+             └── staging    ← integration. Gate final Security + Audit + humano.
+                 └── feature/<tarea>              ← execution
+                     ├── feature/<tarea>/experto-1  ← execution (paralela)
+                     └── feature/<tarea>/experto-2  ← execution (paralela)
 ```
 
-**Merge en dos niveles, cada uno con gate:**
+**Merge en tres gates:**
 ```
-feature/<tarea>/experto-N
+feature/<tarea>/experto-N  [execution]
     │  GATE 1: CoherenceAgent autoriza
     ▼
-feature/<tarea>
+feature/<tarea>            [execution]
     │  GATE 2: Security + Audit aprueban
     ▼
-staging
+staging                    [integration]
     │  GATE 3: revisión humana + Security + Audit
     ▼
-main  ← solo con confirmación humana explícita
+main                       [delivery] ← solo con confirmación humana explícita
 ```
 
 ---
@@ -264,11 +289,12 @@ El proceso completo está trazado en `gates/` (28 archivos de revisión) y `logs
 
 ---
 
-## Relación con la Rama `main`
+## Separación Directive / Artifact
 
-| `agent-configs` | `main` |
-|---|---|
-| Configuración del sistema de agentes | Código de aplicación generado |
-| CLAUDE.md, skills, registry, engram | src/, tests/, docs/, gates/, logs_veracidad/ |
-| No contiene código ejecutable | No contiene config del agente |
-| Versionada independientemente | Recibe merges solo desde staging con confirmación humana |
+| | Rama directive (`agent-configs`) | Ramas artifact (`main`, `staging`, `feature/*`) |
+|---|---|---|
+| **Contiene** | CLAUDE.md, skills, registry, engram, project_spec.md | src/, tests/, docs/, gates/, logs_veracidad/ |
+| **Produce** | Nada ejecutable — solo directivas | Código, tests, documentación, trazabilidad |
+| **Recibe merges de** | Nunca desde artifact | Desde la rama artifact inmediatamente inferior |
+| **Versionado** | Independiente del ciclo de entrega | Sigue el flujo execution → integration → delivery |
+| **Quién la modifica** | El operador humano del marco | Los agentes bajo protocolo PIV/OAC |
